@@ -2,8 +2,11 @@ name: Atualizar EPG Diariamente
 
 on:
   schedule:
-    - cron: '20 3 * * *'  # 00:10 Horário de São Paulo (UTC-3) → 03:10 UTC
-  workflow_dispatch:  # Permite execução manual
+    - cron: '20 3 * * *'  # 00:20 BRT → 03:20 UTC
+  workflow_dispatch:
+
+permissions:  # Adicione esta seção!
+  contents: write  # Permite que o GITHUB_TOKEN faça push
 
 jobs:
   atualizar-epg:
@@ -11,18 +14,22 @@ jobs:
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}  # Autentica o checkout
 
       - name: Baixar EPG.xml
-        run: |
-          curl -s -o epg.xml "https://explouddev.com.br/api/app/epg.xml"
+        run: curl -s -o epg.xml "https://explouddev.com.br/api/app/epg.xml"
 
       - name: Configurar Git
         run: |
           git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions-bot@noreply.github.com"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Commit e Push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Define o token como variável de ambiente
         run: |
           git add epg.xml
           git commit -m "📅 Atualização automática do EPG - $(date '+%d/%m/%Y %H:%M')"
-          git push
+          git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
+          git push origin main
