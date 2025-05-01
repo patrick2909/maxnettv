@@ -1,0 +1,28 @@
+name: Atualizar EPG Diariamente
+
+on:
+  schedule:
+    - cron: '20 3 * * *'  # 00:10 Horário de São Paulo (UTC-3) → 03:10 UTC
+  workflow_dispatch:  # Permite execução manual
+
+jobs:
+  atualizar-epg:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Baixar EPG.xml
+        run: |
+          curl -s -o epg.xml "https://explouddev.com.br/api/app/epg.xml"
+
+      - name: Configurar Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions-bot@noreply.github.com"
+
+      - name: Commit e Push
+        run: |
+          git add epg.xml
+          git commit -m "📅 Atualização automática do EPG - $(date '+%d/%m/%Y %H:%M')"
+          git push
