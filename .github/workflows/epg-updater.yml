@@ -12,6 +12,8 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GH_TOKEN }}
         
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
