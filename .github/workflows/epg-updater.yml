@@ -11,14 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     
     permissions:
-      contents: write  # Permissão essencial para poder fazer push
+      contents: write
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}  # Usando o token automático do GitHub
-        fetch-depth: 0  # Importante para operações git
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
 
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
@@ -32,18 +32,27 @@ jobs:
         EPG_URLS: ${{ secrets.EPG_URLS }}
       run: php epg-script.php
       
+    - name: Verify EPG File
+      run: |
+        if [ ! -f "epg.xml" ]; then
+          echo "::error::Arquivo epg.xml não foi gerado!"
+          exit 1
+        fi
+        echo "EPG gerado com sucesso. Tamanho: $(du -h epg.xml | cut -f1)"
+        
     - name: Commit and Push Changes
       run: |
-        # Configuração do Git
         git config --global user.name "GitHub Actions"
         git config --global user.email "actions@github.com"
         
-        # Verifica se houve mudanças no arquivo
-        if git diff --quiet --exit-code -- epg.xml; then
-          echo "Nenhuma alteração detectada no EPG."
-        else
-          echo "Atualizando EPG..."
-          git add epg.xml
+        # Adiciona timestamp de atualização
+        echo "<!-- Última atualização: $(date '+%d/%m/%Y %H:%M:%S') -->" >> epg.xml
+        
+        git add epg.xml
+        if ! git diff-index --quiet HEAD --; then
           git commit -m "Atualização automática do EPG [skip ci]"
           git push
+          echo "Alterações enviadas com sucesso."
+        else
+          echo "Nenhuma alteração significativa detectada."
         fi
