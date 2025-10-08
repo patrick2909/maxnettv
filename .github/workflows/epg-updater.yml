@@ -1,0 +1,58 @@
+name: EPG Updater
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # 08:00 UTC (5h Brasília)
+    - cron: '0 20 * * *' # 20:00 UTC (17h Brasília)
+  workflow_dispatch:
+
+jobs:
+  update-epg:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: dom, libxml, simplexml, curl
+        
+    - name: Run EPG Script
+      env:
+        API_URL: ${{ secrets.API_URL }}
+        EPG_URLS: ${{ secrets.EPG_URLS }}
+      run: php epg-script.php
+      
+    - name: Verify EPG File
+      run: |
+        if [ ! -f "epg.xml" ]; then
+          echo "::error::Arquivo epg.xml não foi gerado!"
+          exit 1
+        fi
+        echo "EPG gerado com sucesso. Tamanho: $(du -h epg.xml | cut -f1)"
+        
+    - name: Commit and Push Changes
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+        
+        # Adiciona timestamp de atualização
+        echo "<!-- Última atualização: $(date '+%d/%m/%Y %H:%M:%S') -->" >> epg.xml
+        
+        git add epg.xml
+        if ! git diff-index --quiet HEAD --; then
+          git commit -m "Atualização automática do EPG [skip ci]"
+          git push
+          echo "Alterações enviadas com sucesso."
+        else
+          echo "Nenhuma alteração significativa detectada."
+        fi
